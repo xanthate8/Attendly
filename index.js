@@ -8,7 +8,7 @@ import session from "express-session";
 import env from "dotenv";
 
 const app = express();
-const port = 3000;
+const port = 8000;
 const saltRounds = 10;
 env.config();
 
@@ -41,64 +41,49 @@ app.get("/", (req, res) => {
   res.render("home.ejs");
 });
 
-app.get("/login", (req, res) => {
-  res.render("login.ejs");
-});
+
 
 app.get("/register", (req, res) => {
   res.render("register.ejs");
 });
 
-app.get("/logout", (req, res) => {
-  req.logout(function (err) {
-    if (err) {
-      return next(err);
-    }
-    res.redirect("/");
-  });
-});
 
-app.get("/secrets", (req, res) => {
+
+app.get("/welcome", (req, res) => {
   
   if (req.isAuthenticated()) {
-    res.render("secrets.ejs");
+    res.render("welcome.ejs");
   } else {
-    res.redirect("/login");
+    res.render("home.ejs");
   }
 });
 
-app.post(
-  "/login",
-  passport.authenticate("local", {
-    successRedirect: "/secrets",
-    failureRedirect: "/login",
-  })
-);
+
 
 app.post("/register", async (req, res) => {
   const email = req.body.username;
   const password = req.body.password;
 
   try {
-    const checkResult = await db.query("SELECT * FROM users WHERE email = $1", [
+    const checkResult = await db.query("SELECT * FROM peopleinfo WHERE email = $1", [
       email,
     ]);
 
     if (checkResult.rows.length > 0) {
-      req.redirect("/login");
+      res.render("alreadyregistered.ejs");
     } else {
       bcrypt.hash(password, saltRounds, async (err, hash) => {
         if (err) {
           console.error("Error hashing password:", err);
         } else {
           const result = await db.query(
-            "INSERT INTO users (email, password) VALUES ($1, $2) RETURNING *",
+            "INSERT INTO peopleinfo (email, password) VALUES ($1, $2) RETURNING *",
             [email, hash]
           );
           const user = result.rows[0];
           req.login(user, (err) => {
             console.log("success");
-            res.redirect("/secrets");
+            res.redirect("/welcome");
           });
         }
       });
@@ -111,7 +96,7 @@ app.post("/register", async (req, res) => {
 passport.use(
   new Strategy(async function verify(username, password, cb) {
     try {
-      const result = await db.query("SELECT * FROM users WHERE email = $1 ", [
+      const result = await db.query("SELECT * FROM peopleinfo WHERE email = $1 ", [
         username,
       ]);
       if (result.rows.length > 0) {
