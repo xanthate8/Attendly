@@ -1,11 +1,11 @@
 import express from "express";
 import bodyParser from "body-parser";
-import pg from "pg";
 import bcrypt from "bcrypt";
 import passport from "passport";
 import { Strategy } from "passport-local";
 import session from "express-session";
 import env from "dotenv";
+import { supabase } from "./supabase.js"; // ✅ Supabase client
 
 const app = express();
 const port = 8000;
@@ -25,32 +25,15 @@ app.use(express.static("public"));
 app.use(passport.initialize());
 app.use(passport.session());
 
-const db = new pg.Client({
-  user: "postgres",
-  host: "db.qvxnkdzggijciklxjcgg.supabase.co",
-  database: "postgres",
-  password: "dagHvd56_09djcbhD3Gdgh",
-  port: "5432",
-  ssl: {
-    rejectUnauthorized: false,
-  }
-});
-await db.connect();
-
 app.get("/", (req, res) => {
   res.render("home.ejs");
 });
-
-
 
 app.get("/register", (req, res) => {
   res.render("register.ejs");
 });
 
-
-
 app.get("/welcome", (req, res) => {
-  
   if (req.isAuthenticated()) {
     res.render("welcome.ejs");
   } else {
@@ -58,30 +41,34 @@ app.get("/welcome", (req, res) => {
   }
 });
 
-
-
 app.post("/register", async (req, res) => {
   const email = req.body.username;
   const password = req.body.password;
 
   try {
-    const checkResult = await db.query("SELECT * FROM peopleinfo WHERE email = $1", [
-      email,
-    ]);
+    const { data: existingUser, error: checkError } = await supabase
+      .from("peopleinfo")
+      .select("*")
+      .eq("email", email);
 
-    if (checkResult.rows.length > 0) {
+    if (checkError) throw checkError;
+
+    if (existingUser.length > 0) {
       res.render("alreadyregistered.ejs");
     } else {
       bcrypt.hash(password, saltRounds, async (err, hash) => {
         if (err) {
           console.error("Error hashing password:", err);
         } else {
-          const result = await db.query(
-            "INSERT INTO peopleinfo (email, password) VALUES ($1, $2) RETURNING *",
-            [email, hash]
-          );
-          const user = result.rows[0];
-          req.login(user, (err) => {
+          const { data: newUser, error: insertError } = await supabase
+            .from("peopleinfo")
+            .insert([{ email, password: hash }])
+            .select()
+            .single();
+
+          if (insertError) throw insertError;
+
+          req.login(newUser, (err) => {
             console.log("success");
             res.redirect("/welcome");
           });
@@ -96,32 +83,30 @@ app.post("/register", async (req, res) => {
 passport.use(
   new Strategy(async function verify(username, password, cb) {
     try {
-      const result = await db.query("SELECT * FROM peopleinfo WHERE email = $1 ", [
-        username,
-      ]);
-      if (result.rows.length > 0) {
-        const user = result.rows[0];
+      const { data: users, error } = await supabase
+        .from("peopleinfo")
+        .select("*")
+        .eq("email", username);
+
+      if (error) throw error;
+
+      if (users.length > 0) {
+        const user = users[0];
         const storedHashedPassword = user.password;
         bcrypt.compare(password, storedHashedPassword, (err, valid) => {
           if (err) {
-            
             console.error("Error comparing passwords:", err);
             return cb(err);
           } else {
-            if (valid) {
-              
-              return cb(null, user);
-            } else {
-              
-              return cb(null, false);
-            }
+            return cb(null, valid ? user : false);
           }
         });
       } else {
-        return cb("User not found");
+        return cb(null, false);
       }
     } catch (err) {
       console.log(err);
+      return cb(err);
     }
   })
 );
