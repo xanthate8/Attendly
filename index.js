@@ -29,8 +29,8 @@ const db = new pg.Client({
   user: "postgres",
   host: "db.qvxnkdzggijciklxjcgg.supabase.co",
   database: "postgres",
-  password: process.env.PG_PASSWORD,
-  port: 5432,
+  password: "dagHvd56_09djcbhD3Gdgh",
+  port: "5432",
   ssl: {
     rejectUnauthorized: false,
   }
