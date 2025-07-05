@@ -35,7 +35,7 @@ const db = new pg.Client({
     rejectUnauthorized: false,
   }
 });
-db.connect();
+await db.connect();
 
 app.get("/", (req, res) => {
   res.render("home.ejs");
