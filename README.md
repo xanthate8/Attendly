@@ -8,6 +8,6 @@ Used supabase for storing and comparing the data.
 
 Also hashed and salted the passwords for maintaining the security.
 
-Used passport, express session for authentication and maintaining user info for sometime so that they don't need to login again and can directly access the "secrets" page.
+Used passport, express session for authentication and maintaining user info for sometime.
 
 Had to hard code some of the lines(couldnot use .env) due to deployment problems in render. Was showing some error in case of using .env .
